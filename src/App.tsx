@@ -40,6 +40,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [forceRelay, setForceRelay] = useState(false);
   
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
@@ -148,7 +149,7 @@ function App() {
       debug: 3,
       config: { 
         iceServers, 
-        iceTransportPolicy: 'all',
+        iceTransportPolicy: forceRelay ? 'relay' : 'all',
         iceCandidatePoolSize: 10
       },
     });
@@ -393,7 +394,7 @@ function App() {
             <div className="logo-icon"><MessageSquare size={48} /></div>
             <div className="logo-title">TempChat</div>
             <div className="logo-tagline">Secure, peer-to-peer messaging.<br/>No servers, no logs.</div>
-            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:06 PM</div>
+            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:15 PM</div>
           </div>
           
           <div className="input-group">
@@ -452,6 +453,10 @@ function App() {
           <div style={{textAlign: 'center', color: 'var(--border)', fontSize: '13px', margin: '8px 0'}}>— OR —</div>
           
           <div className="input-group" style={{marginTop: '16px'}}>
+            <label className="input-label" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', marginBottom:'8px'}}>
+              <input type="checkbox" checked={forceRelay} onChange={e => setForceRelay(e.target.checked)} />
+              <span style={{fontSize:'12px'}}>Relay Mode (Fixes Mobile connection)</span>
+            </label>
             <label className="input-label">Connect to Peer</label>
             <input type="text" className="text-input" placeholder="Enter their ID" value={peerIdInput} onChange={e => setPeerIdInput(e.target.value)} maxLength={20} />
           </div>
