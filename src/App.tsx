@@ -149,7 +149,7 @@ function App() {
       config: { 
         iceServers, 
         iceTransportPolicy: 'all',
-        iceCandidatePoolSize: 0
+        iceCandidatePoolSize: 10
       },
     });
 
@@ -225,14 +225,6 @@ function App() {
   const acceptConnection = (conn: DataConnection) => {
     setPeerId(conn.peer);
 
-    // Same as initiator: wait for the data channel to actually open
-    // before showing the chat screen. conn.on('open') can be missed
-    // if the channel opens synchronously, so we also poll conn.open.
-    if (conn.open) {
-      setupConnection(conn);
-      return;
-    }
-
     let settled = false;
     const settle = () => {
       if (settled) return;
@@ -241,12 +233,16 @@ function App() {
       setupConnection(conn);
     };
 
+    // Don't check conn.open synchronously — it's often false on mobile at this point
     const poll = setInterval(() => {
       if (conn.open) settle();
-    }, 300);
+    }, 500);
 
     conn.on('open', settle);
     conn.on('error', () => { settled = true; clearInterval(poll); });
+    
+    // Safety timeout — if connection negotiation takes too long, clean up
+    setTimeout(() => { settled = true; clearInterval(poll); }, 60000);
   };
 
   const connectToPeer = () => {
@@ -397,7 +393,7 @@ function App() {
             <div className="logo-icon"><MessageSquare size={48} /></div>
             <div className="logo-title">TempChat</div>
             <div className="logo-tagline">Secure, peer-to-peer messaging.<br/>No servers, no logs.</div>
-            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:04 PM</div>
+            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:06 PM</div>
           </div>
           
           <div className="input-group">
@@ -475,9 +471,9 @@ function App() {
                   <button 
                     className="btn-secondary" 
                     style={{width:'100%', padding:'8px 16px', margin:0}} 
-                    onClick={() => window.location.reload()}
+                    onClick={connectToPeer}
                   >
-                    Refresh App
+                    Retry Connection
                   </button>
                   <div className="debug-log-view" style={{fontSize:'10px', color:'var(--text-secondary)', background:'rgba(0,0,0,0.1)', padding:'8px', borderRadius:'4px', marginTop:'8px', textAlign:'left'}}>
                     <strong>Debug Trace:</strong>
