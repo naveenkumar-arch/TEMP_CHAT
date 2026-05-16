@@ -77,6 +77,27 @@ function App() {
     setMyIdError('');
   };
 
+  // Auto-Update Logic: Check for new version every 5 minutes
+  useEffect(() => {
+    const currentVersion = "1.0.1";
+    const checkVersion = async () => {
+      try {
+        const res = await fetch(`/version.json?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.version && data.version !== currentVersion) {
+            // New version detected! If not in chat, reload.
+            if (screen !== 3) {
+              window.location.reload();
+            }
+          }
+        }
+      } catch (e) {}
+    };
+    const interval = setInterval(checkVersion, 1000 * 60 * 5); // 5 mins
+    return () => clearInterval(interval);
+  }, [screen]);
+
   const initPeer = async () => {
     const id = myId.trim();
     if (!/^[a-zA-Z0-9]+$/.test(id)) {
@@ -407,7 +428,15 @@ function App() {
                 {connectionStatus.type === 'loading' && <div style={{display:'flex', alignItems:'center', gap:'8px'}}><div className="spinner" style={{width:'16px',height:'16px'}}></div>{connectionStatus.text}</div>}
                 {connectionStatus.type !== 'loading' && connectionStatus.text}
               </div>
-              {connectionStatus.type === 'error' && <button className="btn-secondary" style={{width:'auto', padding:'8px 16px', margin:0}} onClick={() => setConnectionStatus(null)}>Retry</button>}
+              {connectionStatus.type === 'error' && (
+                <button 
+                  className="btn-secondary" 
+                  style={{width:'auto', padding:'8px 16px', margin:0}} 
+                  onClick={() => window.location.reload()}
+                >
+                  Refresh App
+                </button>
+              )}
             </div>
           )}
         </div>
