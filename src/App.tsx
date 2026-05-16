@@ -88,33 +88,25 @@ function App() {
     setMyIdError('');
     setIsInitializing(true);
 
+    const iceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+      // OpenRelay free TURN (metered.ca)
+      { urls: 'turn:openrelay.metered.ca:80',      username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443',     username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
+      // relay.metered.ca free TURN
+      { urls: 'turn:relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    ];
+
     const peer = new Peer(id, {
       debug: 0,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-        ],
-        iceTransportPolicy: 'all',
-      },
+      config: { iceServers, iceTransportPolicy: 'all' },
     });
     peerRef.current = peer;
 
@@ -160,25 +152,41 @@ function App() {
 
     setConnectionStatus({type: 'loading', text: `Reaching ${id}...`});
     setPeerId(id);
-    
+
     if (!peerRef.current) return;
-    const conn = peerRef.current.connect(id, { reliable: true });
-    
-    const timeout = setTimeout(() => {
-      if (!connRef.current) {
-        setConnectionStatus({type: 'error', text: 'Connection timed out. Make sure both peers are online and try again.'});
-        conn.close();
+    const conn = peerRef.current.connect(id, { reliable: true, serialization: 'json' });
+
+    // Guard: ensure setupConnection only runs once
+    let settled = false;
+    const settle = (success: boolean, errMsg?: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      clearInterval(openPoll);
+      if (success) {
+        setupConnection(conn);
+      } else if (errMsg) {
+        setConnectionStatus({ type: 'error', text: errMsg });
       }
-    }, 20000);
+    };
 
-    conn.on('open', () => {
-      clearTimeout(timeout);
-      setupConnection(conn);
-    });
+    const timeout = setTimeout(() => {
+      settle(false, 'Connection timed out. Make sure both peers are online and try again.');
+      conn.close();
+    }, 25000);
 
-    conn.on('error', () => {
-      clearTimeout(timeout);
-      setConnectionStatus({type: 'error', text: `${id} not found or offline`});
+    // PeerJS bug: conn.on('open') sometimes never fires on the initiator side
+    // even though the connection IS open. Poll as a fallback.
+    const openPoll = setInterval(() => {
+      if (conn.open) settle(true);
+    }, 300);
+
+    conn.on('open', () => settle(true));
+
+    conn.on('error', (err: any) => {
+      settle(false, err?.type === 'peer-unavailable'
+        ? `Peer "${id}" not found or offline`
+        : `${id} not found or offline`);
     });
   };
 
