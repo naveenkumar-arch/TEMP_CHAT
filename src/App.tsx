@@ -142,10 +142,9 @@ function App() {
     console.log("Initializing Peer with ICE Servers count:", iceServers.length);
 
     const peer = new Peer(id, {
-      host: 'peerjs.com',
+      host: '0.peerjs.com',
       port: 443,
       secure: true,
-      key: 'peerjs',
       debug: 3,
       config: { 
         iceServers, 
@@ -394,7 +393,7 @@ function App() {
             <div className="logo-icon"><MessageSquare size={48} /></div>
             <div className="logo-title">TempChat</div>
             <div className="logo-tagline">Secure, peer-to-peer messaging.<br/>No servers, no logs.</div>
-            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:15 PM</div>
+            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:23 PM</div>
           </div>
           
           <div className="input-group">
