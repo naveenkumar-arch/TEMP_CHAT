@@ -39,6 +39,7 @@ function App() {
   const [showInfo, setShowInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
   
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
@@ -140,13 +141,27 @@ function App() {
     console.log("Initializing Peer with ICE Servers count:", iceServers.length);
 
     const peer = new Peer(id, {
-      debug: 3, // Full debug logs
+      host: '0.peerjs.com',
+      secure: true,
+      debug: 3,
       config: { 
         iceServers, 
         iceTransportPolicy: 'all',
-        iceCandidatePoolSize: 10
+        iceCandidatePoolSize: 0
       },
     });
+
+    // Capture logs for UI display on error
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = (...args) => {
+      originalLog(...args);
+      setDebugLogs(prev => [...prev.slice(-4), args.join(' ')]);
+    };
+    console.error = (...args) => {
+      originalError(...args);
+      setDebugLogs(prev => [...prev.slice(-4), args.join(' ')]);
+    };
     peerRef.current = peer;
 
     peer.on('open', (assignedId) => {
@@ -236,7 +251,7 @@ function App() {
 
     if (!peerRef.current) return;
     const conn = peerRef.current.connect(id, { 
-      metadata: { initiator: true },
+      reliable: true,
       serialization: 'json' 
     });
 
@@ -433,13 +448,19 @@ function App() {
                 {connectionStatus.type !== 'loading' && connectionStatus.text}
               </div>
               {connectionStatus.type === 'error' && (
-                <button 
-                  className="btn-secondary" 
-                  style={{width:'auto', padding:'8px 16px', margin:0}} 
-                  onClick={() => window.location.reload()}
-                >
-                  Refresh App
-                </button>
+                <div style={{display:'flex', flexDirection:'column', gap:'8px', width:'100%'}}>
+                  <button 
+                    className="btn-secondary" 
+                    style={{width:'100%', padding:'8px 16px', margin:0}} 
+                    onClick={() => window.location.reload()}
+                  >
+                    Refresh App
+                  </button>
+                  <div className="debug-log-view" style={{fontSize:'10px', color:'var(--text-secondary)', background:'rgba(0,0,0,0.1)', padding:'8px', borderRadius:'4px', marginTop:'8px', textAlign:'left'}}>
+                    <strong>Debug Trace:</strong>
+                    {debugLogs.map((log, i) => <div key={i} style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>• {log}</div>)}
+                  </div>
+                </div>
               )}
             </div>
           )}
