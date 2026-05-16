@@ -198,7 +198,15 @@ function App() {
     });
 
     peer.on('connection', (conn) => {
-      if (connRef.current) { conn.close(); return; }
+      // If we're already in a chat, only allow a new connection if it's from the SAME peer
+      // (helps recover from ghost connections or page refreshes)
+      if (connRef.current && connRef.current.peer !== conn.peer && connRef.current.open) {
+        console.warn("Rejecting connection: already busy with", connRef.current.peer);
+        conn.close();
+        return;
+      }
+      
+      console.log("Incoming connection from", conn.peer);
       acceptConnection(conn);
     });
   };
@@ -298,7 +306,18 @@ function App() {
     
     setTimeout(() => setScreen(3), 600);
 
+    // Keep-alive ping to prevent NAT timeouts on mobile networks
+    const pingInterval = setInterval(() => {
+      if (conn.open) {
+        conn.send({ type: 'ping' });
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 5000);
+
     conn.on('data', (data: any) => {
+      if (data.type === 'ping') return; // Ignore pings
+      
       if (data.type === 'message') {
         const newMsg: Message = { id: data.id, text: data.text, timestamp: data.timestamp, type: 'received', status: 'delivered' };
         setMessages(prev => [...prev, newMsg]);
@@ -317,6 +336,8 @@ function App() {
     });
 
     conn.on('close', () => {
+      console.log("Connection closed with peer");
+      clearInterval(pingInterval);
       setIsConnected(false);
       setSessionEnded(true);
     });
