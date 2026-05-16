@@ -77,7 +77,7 @@ function App() {
     setMyIdError('');
   };
 
-  const initPeer = () => {
+  const initPeer = async () => {
     const id = myId.trim();
     if (!/^[a-zA-Z0-9]+$/.test(id)) {
       setMyIdError('Only letters and numbers allowed'); return;
@@ -89,21 +89,36 @@ function App() {
     setMyIdError('');
     setIsInitializing(true);
 
-    const iceServers = [
+    // Fallback TURN servers (community free — may be rate-limited)
+    const fallbackIceServers: RTCIceServer[] = [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:global.stun.twilio.com:3478' },
-      // OpenRelay free TURN (metered.ca)
-      { urls: 'turn:openrelay.metered.ca:80',      username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443',     username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
-      // relay.metered.ca free TURN
-      { urls: 'turn:relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:80',                  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443',                 username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp',   username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:80?transport=tcp',    username: 'openrelayproject', credential: 'openrelayproject' },
     ];
+
+    // Fetch fresh TURN credentials from metered.ca if API key is configured.
+    // Sign up free at https://dashboard.metered.ca/signup → copy API key →
+    // add VITE_METERED_API_KEY=<key> to .env and Vercel env vars.
+    let iceServers: RTCIceServer[] = fallbackIceServers;
+    const meteredKey = import.meta.env.VITE_METERED_API_KEY;
+    if (meteredKey) {
+      try {
+        const res = await fetch(
+          `https://temp-chat-murex.vercel.app/api/turn?key=${meteredKey}`
+        );
+        if (!res.ok) throw new Error('bad response');
+        const creds: RTCIceServer[] = await res.json();
+        if (Array.isArray(creds) && creds.length > 0) {
+          iceServers = creds;
+        }
+      } catch {
+        // fall back to hardcoded servers
+      }
+    }
 
     const peer = new Peer(id, {
       debug: 0,
@@ -135,7 +150,6 @@ function App() {
         setMyIdError('That ID is already taken');
         setIsInitializing(false);
       } else if (networkErrors.includes(err.type)) {
-        // Transient network error — peer will auto-reconnect via 'disconnected'
         setMyIdError('Network hiccup — reconnecting...');
         setIsReconnecting(true);
         setIsInitializing(false);
