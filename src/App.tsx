@@ -141,8 +141,10 @@ function App() {
     console.log("Initializing Peer with ICE Servers count:", iceServers.length);
 
     const peer = new Peer(id, {
-      host: '0.peerjs.com',
+      host: 'peerjs.com',
+      port: 443,
       secure: true,
+      key: 'peerjs',
       debug: 3,
       config: { 
         iceServers, 
@@ -309,11 +311,11 @@ function App() {
     // Keep-alive ping to prevent NAT timeouts on mobile networks
     const pingInterval = setInterval(() => {
       if (conn.open) {
-        conn.send({ type: 'ping' });
+        try { conn.send({ type: 'ping' }); } catch (e) {}
       } else {
         clearInterval(pingInterval);
       }
-    }, 5000);
+    }, 3000);
 
     conn.on('data', (data: any) => {
       if (data.type === 'ping') return; // Ignore pings
@@ -396,6 +398,7 @@ function App() {
             <div className="logo-icon"><MessageSquare size={48} /></div>
             <div className="logo-title">TempChat</div>
             <div className="logo-tagline">Secure, peer-to-peer messaging.<br/>No servers, no logs.</div>
+            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:02 PM</div>
           </div>
           
           <div className="input-group">
