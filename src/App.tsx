@@ -107,7 +107,8 @@ function App() {
       if (res.ok) {
         const creds = await res.json();
         if (Array.isArray(creds) && creds.length > 0) {
-          iceServers = creds;
+          // Merge Metered servers with Google STUN for maximum reliability
+          iceServers = [...fallbackIceServers, ...creds];
         }
       }
     } catch {
@@ -115,8 +116,12 @@ function App() {
     }
 
     const peer = new Peer(id, {
-      debug: 0,
-      config: { iceServers, iceTransportPolicy: 'all' },
+      debug: 2, // Increased debug level to help find issues
+      config: { 
+        iceServers, 
+        iceTransportPolicy: 'all',
+        iceCandidatePoolSize: 10 // Pre-fetch candidates for faster connection
+      },
     });
     peerRef.current = peer;
 
@@ -206,7 +211,10 @@ function App() {
     setPeerId(id);
 
     if (!peerRef.current) return;
-    const conn = peerRef.current.connect(id, { reliable: true, serialization: 'json' });
+    const conn = peerRef.current.connect(id, { 
+      metadata: { initiator: true },
+      serialization: 'json' 
+    });
 
     // Guard: ensure setupConnection only runs once
     let settled = false;
