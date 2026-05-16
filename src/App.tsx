@@ -29,6 +29,7 @@ function App() {
   const [peerId, setPeerId] = useState('');
   
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [_isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{type: 'loading'|'success'|'error', text: string} | null>(null);
   
@@ -114,13 +115,34 @@ function App() {
       setMyId(assignedId);
       setScreen(2);
       setIsInitializing(false);
+      setIsReconnecting(false);
       setTimeout(() => generateQR(assignedId), 100);
     });
 
+    // Signaling server dropped — automatically reconnect with same ID
+    peer.on('disconnected', () => {
+      if (!peer.destroyed) {
+        setIsReconnecting(true);
+        setTimeout(() => {
+          if (!peer.destroyed) peer.reconnect();
+        }, 2000);
+      }
+    });
+
     peer.on('error', (err) => {
-      if (err.type === 'unavailable-id') setMyIdError('That ID is already taken');
-      else setMyIdError('Connection failed: ' + err.message);
-      setIsInitializing(false);
+      const networkErrors = ['network', 'server-error', 'socket-error', 'socket-closed'];
+      if (err.type === 'unavailable-id') {
+        setMyIdError('That ID is already taken');
+        setIsInitializing(false);
+      } else if (networkErrors.includes(err.type)) {
+        // Transient network error — peer will auto-reconnect via 'disconnected'
+        setMyIdError('Network hiccup — reconnecting...');
+        setIsReconnecting(true);
+        setIsInitializing(false);
+      } else {
+        setMyIdError('Connection failed: ' + err.message);
+        setIsInitializing(false);
+      }
     });
 
     peer.on('connection', (conn) => {
@@ -317,6 +339,13 @@ function App() {
             <div className="spinner-container">
               <div className="spinner"></div>
               <div className="spinner-text">Connecting to signaling server...</div>
+            </div>
+          )}
+
+          {isReconnecting && (
+            <div className="spinner-container">
+              <div className="spinner" style={{borderTopColor: '#f0a500'}}></div>
+              <div className="spinner-text" style={{color: '#f0a500'}}>Reconnecting to server...</div>
             </div>
           )}
         </div>
