@@ -132,16 +132,19 @@ function App() {
           iceServers = [...fallbackIceServers, ...creds];
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch TURN credentials:", err);
       console.warn("Using fallback ICE servers");
     }
 
+    console.log("Initializing Peer with ICE Servers count:", iceServers.length);
+
     const peer = new Peer(id, {
-      debug: 2, // Increased debug level to help find issues
+      debug: 3, // Full debug logs
       config: { 
         iceServers, 
         iceTransportPolicy: 'all',
-        iceCandidatePoolSize: 10 // Pre-fetch candidates for faster connection
+        iceCandidatePoolSize: 10
       },
     });
     peerRef.current = peer;
@@ -252,9 +255,10 @@ function App() {
     };
 
     const timeout = setTimeout(() => {
-      settle(false, 'Connection timed out. Make sure both peers are online and try again.');
+      console.error("Connection attempt timed out after 45s");
+      settle(false, 'Connection timed out. This usually happens if a firewall is blocking the connection or the other peer disconnected. Try refreshing on both sides.');
       conn.close();
-    }, 25000);
+    }, 45000);
 
     // PeerJS bug: conn.on('open') sometimes never fires on the initiator side
     // even though the connection IS open. Poll as a fallback.
