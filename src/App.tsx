@@ -140,7 +140,29 @@ function App() {
 
   const acceptConnection = (conn: DataConnection) => {
     setPeerId(conn.peer);
-    setupConnection(conn);
+
+    // Same as initiator: wait for the data channel to actually open
+    // before showing the chat screen. conn.on('open') can be missed
+    // if the channel opens synchronously, so we also poll conn.open.
+    if (conn.open) {
+      setupConnection(conn);
+      return;
+    }
+
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearInterval(poll);
+      setupConnection(conn);
+    };
+
+    const poll = setInterval(() => {
+      if (conn.open) settle();
+    }, 300);
+
+    conn.on('open', settle);
+    conn.on('error', () => { settled = true; clearInterval(poll); });
   };
 
   const connectToPeer = () => {
