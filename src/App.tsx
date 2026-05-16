@@ -84,7 +84,7 @@ function App() {
     const currentVersion = "1.0.1";
     const checkVersion = async () => {
       try {
-        const res = await fetch(`/version.json?t=${Date.now()}`);
+        const res = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (data.version && data.version !== currentVersion) {
@@ -142,9 +142,6 @@ function App() {
     console.log("Initializing Peer with ICE Servers count:", iceServers.length);
 
     const peer = new Peer(id, {
-      host: '0.peerjs.com',
-      port: 443,
-      secure: true,
       debug: 3,
       config: { 
         iceServers, 
