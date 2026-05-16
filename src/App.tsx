@@ -29,7 +29,7 @@ function App() {
   const [peerId, setPeerId] = useState('');
   
   const [isInitializing, setIsInitializing] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [_isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{type: 'loading'|'success'|'error', text: string} | null>(null);
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -88,7 +88,34 @@ function App() {
     setMyIdError('');
     setIsInitializing(true);
 
-    const peer = new Peer(id, { debug: 0 });
+    const peer = new Peer(id, {
+      debug: 0,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject',
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject',
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject',
+          },
+        ],
+        iceTransportPolicy: 'all',
+      },
+    });
     peerRef.current = peer;
 
     peer.on('open', (assignedId) => {
@@ -139,10 +166,10 @@ function App() {
     
     const timeout = setTimeout(() => {
       if (!connRef.current) {
-        setConnectionStatus({type: 'error', text: 'Connection timed out'});
+        setConnectionStatus({type: 'error', text: 'Connection timed out. Make sure both peers are online and try again.'});
         conn.close();
       }
-    }, 8000);
+    }, 20000);
 
     conn.on('open', () => {
       clearTimeout(timeout);
