@@ -100,24 +100,18 @@ function App() {
       { urls: 'turn:openrelay.metered.ca:80?transport=tcp',    username: 'openrelayproject', credential: 'openrelayproject' },
     ];
 
-    // Fetch fresh TURN credentials from metered.ca if API key is configured.
-    // Sign up free at https://dashboard.metered.ca/signup → copy API key →
-    // add VITE_METERED_API_KEY=<key> to .env and Vercel env vars.
+    // Fetch fresh TURN credentials from your dedicated Metered account
     let iceServers: RTCIceServer[] = fallbackIceServers;
-    const meteredKey = import.meta.env.VITE_METERED_API_KEY;
-    if (meteredKey) {
-      try {
-        const res = await fetch(
-          `https://temp-chat-murex.vercel.app/api/turn?key=${meteredKey}`
-        );
-        if (!res.ok) throw new Error('bad response');
-        const creds: RTCIceServer[] = await res.json();
+    try {
+      const res = await fetch("https://temp_chat.metered.live/api/v1/turn/credentials?apiKey=5312310ec55cc3294ad33497a6058e3e333d");
+      if (res.ok) {
+        const creds = await res.json();
         if (Array.isArray(creds) && creds.length > 0) {
           iceServers = creds;
         }
-      } catch {
-        // fall back to hardcoded servers
       }
+    } catch {
+      console.warn("Using fallback ICE servers");
     }
 
     const peer = new Peer(id, {
