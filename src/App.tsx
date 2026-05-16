@@ -261,7 +261,6 @@ function App() {
 
     if (!peerRef.current) return;
     const conn = peerRef.current.connect(id, { 
-      reliable: true,
       serialization: 'json' 
     });
 
@@ -398,7 +397,7 @@ function App() {
             <div className="logo-icon"><MessageSquare size={48} /></div>
             <div className="logo-title">TempChat</div>
             <div className="logo-tagline">Secure, peer-to-peer messaging.<br/>No servers, no logs.</div>
-            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:02 PM</div>
+            <div style={{fontSize: '9px', color: 'var(--border)', marginTop: '8px'}}>Last Updated: May 16, 4:04 PM</div>
           </div>
           
           <div className="input-group">
